@@ -1,0 +1,5 @@
+[
+  {"task": "Explain in 3 sentences what a kill switch is in software.", "must_contain": ["stop"]},
+  {"task": "List 3 risks of letting AI agents modify their own code.", "must_contain": ["risk", "code"]},
+  {"task": "Give a one-paragraph plan to test whether a prompt change improved results.", "must_contain": ["test", "compare"]}
+]

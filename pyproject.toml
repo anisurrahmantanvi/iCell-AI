@@ -1,0 +1,16 @@
+[project]
+name = "agent-ecosystem"
+version = "0.1.0"
+description = "Multi-agent ecosystem with human control: kill switch, budget, approval gate, audit log"
+requires-python = ">=3.9"
+dependencies = []
+
+[project.scripts]
+ecosystem = "ecosystem.cli:main"
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]

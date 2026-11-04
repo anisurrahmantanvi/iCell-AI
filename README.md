@@ -1,1 +1,72 @@
 # iCell-AI
+
+Multi-Agent AI Ecosystem।
+
+মানুষের নিয়ন্ত্রণে চলা ছোট multi-agent সিস্টেম। এজেন্টরা কাজ ভাগ করে করে, নিজেদের প্রম্পট উন্নত করার *প্রস্তাব* দেয়, আপনি অনুমোদন দিলে তবেই প্রয়োগ হয়। বিস্তারিত: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)।
+
+## চালানো (Python 3.9+, কিছু install লাগে না)
+
+```
+export PYTHONPATH=src
+python -m ecosystem eval                 # mock মডেল দিয়ে (ডিফল্ট)
+python -m ecosystem run "আপনার কাজ"
+python -m ecosystem improve              # প্রস্তাব তৈরি
+python -m ecosystem proposals
+python -m ecosystem test 1               # আগে/পরে তুলনা
+python -m ecosystem approve 1            # y দিলে প্রয়োগ
+python -m ecosystem kill                 # Kill switch
+python -m ecosystem resume
+```
+
+(`pip install -e .` করলে `ecosystem eval` সরাসরিও চলবে।)
+
+## মডেল বেছে নেওয়া
+
+| মডেল | সেটআপ |
+|---|---|
+| mock (শুধু পরীক্ষা, নকল উত্তর) | ডিফল্ট |
+| Ollama (লোকাল, ফ্রি) | `export PROVIDER=ollama` |
+| Gemini ফ্রি টিয়ার | `export PROVIDER=gemini GEMINI_API_KEY=...` |
+| Groq ফ্রি টিয়ার | `export PROVIDER=groq GROQ_API_KEY=...` |
+
+`MODEL=` দিয়ে মডেলের নাম বদলানো যায়। বাজেট: `MAX_CALLS` (৬০), `MAX_SECONDS` (৯০০)।
+
+## HTTP API
+
+দুটো আলাদা টোকেন লাগে (১৬+ অক্ষর), না থাকলে সার্ভার চালুই হয় না:
+
+```
+export ECOSYSTEM_API_TOKEN=...      # user: run, eval, improve, test, kill
+export ECOSYSTEM_OWNER_TOKEN=...    # owner: সব, সঙ্গে approve, resume, audit
+python -m ecosystem serve --port 8765      # ডিফল্ট শুধু 127.0.0.1
+```
+
+| Method | পথ | কে পারে |
+|---|---|---|
+| GET | `/health` | যে কেউ |
+| GET | `/status`, `/proposals`, `/proposals/{id}` | user, owner |
+| POST | `/run` `{"task": "..."}` | user, owner |
+| POST | `/eval`, `/improve`, `/proposals/{id}/test` | user, owner |
+| POST | `/kill` | user, owner (বন্ধ করা সবার জন্য খোলা) |
+| POST | `/resume` | শুধু owner |
+| POST | `/proposals/{id}/approve` `{"confirm": true}` | শুধু owner |
+| GET | `/audit?n=50` | শুধু owner |
+
+```
+curl -H "Authorization: Bearer $ECOSYSTEM_API_TOKEN" -X POST \
+     -d '{"task":"..."}' http://127.0.0.1:8765/run
+```
+
+একসাথে একটাই মডেল-কাজ চলে (অন্যটা এলে 409)। Owner টোকেন এজেন্টদের হাতে দেবেন না। সার্ভার সাধারণ HTTP, লোকালহোস্টের বাইরে দিলে TLS reverse proxy লাগবে।
+
+## টেস্ট
+
+```
+PYTHONPATH=src python -m unittest discover -s tests
+```
+
+## অবস্থা
+
+- Mock মডেলে সব নিয়ন্ত্রণ-অংশ (kill switch, বাজেট, অনুমোদন) টেস্ট করা।
+- Ollama/Gemini/Groq কোড লেখা আছে, কিন্তু আসল সার্ভারে এখনো চালানো হয়নি।
+- HTTP API mock মডেলে টেস্ট করা (টোকেন, অনুমতি, kill switch, approve)। আসল মডেল দিয়ে এখনো চালানো হয়নি, আর দীর্ঘ কাজে অনুরোধ সিঙ্ক্রোনাস, তাই সময়সীমা পেরোতে পারে (পরে job queue দরকার হতে পারে)।
