@@ -18,6 +18,10 @@ class EvalManyTests(EcoTestCase):
             self.assertIsInstance(t["task"], str)
             for req in t["must_contain"]:
                 self.assertTrue(isinstance(req, str) or (isinstance(req, list) and req))
+            for key in ("max_words", "max_paragraphs"):
+                if key in t:
+                    self.assertIsInstance(t[key], int)
+                    self.assertGreater(t[key], 0)
 
     def test_budget_scales_with_task_count(self):
         # mock: ~4 calls per task, 13+ tasks is more than the old default of 60 calls in total

@@ -2,6 +2,7 @@
 so the LLM reviewer alone cannot decide whether something improved."""
 import json
 import os
+import re
 
 from .. import config
 from ..agents.base import Context
@@ -14,13 +15,40 @@ def keyword_check(requirements, answer):
     (any one of them counts). Matching is a case-insensitive substring test."""
     if not requirements:
         return 1.0
+    return _count_met(requirements, answer) / len(requirements)
+
+
+def _count_met(requirements, answer):
     low = answer.lower()
     met = 0
     for req in requirements:
         alternatives = [req] if isinstance(req, str) else list(req)
         if any(a.lower() in low for a in alternatives):
             met += 1
-    return met / len(requirements)
+    return met
+
+def _paragraphs(answer):
+    return len([p for p in re.split(r"\n\s*\n", answer.strip()) if p.strip()])
+
+
+def check_answer(task, answer):
+    """Deterministic score 0-1 for one task. Each of these counts as one requirement:
+    every "must_contain" entry, "max_words" (answer not longer than that) and "max_paragraphs"
+    (answer not split into more blocks than that). The pipeline joins the output of every step with
+    a blank line, so a simple question that gets chopped into several steps shows up as too many
+    paragraphs; padded answers show up as too many words. Keyword checks alone cannot see either."""
+    reqs = task.get("must_contain", [])
+    max_words = task.get("max_words")
+    max_par = task.get("max_paragraphs")
+    total = len(reqs) + (1 if max_words else 0) + (1 if max_par else 0)
+    if total == 0:
+        return 1.0
+    met = _count_met(reqs, answer)
+    if max_words and len(answer.split()) <= max_words:
+        met += 1
+    if max_par and _paragraphs(answer) <= max_par:
+        met += 1
+    return met / total
 
 
 def run_eval(provider, overrides=None, on_result=None):
@@ -35,7 +63,7 @@ def run_eval(provider, overrides=None, on_result=None):
     results = []
     for t in tasks:
         res = run_task(t["task"], ctx)
-        res["check"] = keyword_check(t.get("must_contain", []), res["answer"])
+        res["check"] = check_answer(t, res["answer"])
         res["final"] = 0.5 * res["score"] / 10 + 0.5 * res["check"]
         results.append(res)
         if on_result:
