@@ -5,7 +5,7 @@ from .agents.base import Context
 from .agents.orchestrator import run_task
 from .core import audit, killswitch, proposals
 from .core.killswitch import Stopped
-from .evals.runner import load_last, run_eval_many, save_last, summarize
+from .evals.runner import load_last, paragraph_count, rescore, run_eval_many, save_last, summarize
 from .evolution.improver import propose
 from .llm import get_provider
 
@@ -21,6 +21,8 @@ def cmd_run(args):
 
 def _show(res):
     print(f"  - {res['task'][:55]}... reviewer={res['score']:.1f}/10 checks={res['check']:.0%}")
+    for f in res.get("check_failures", []):
+        print(f"      ✗ {f}")
 
 
 def _parse_runs(args):
@@ -52,11 +54,29 @@ def cmd_eval(args):
     print(f"গড় স্কোর: {_fmt(avgs)}")
 
 
+def cmd_report(_):
+    """Offline (no model calls): why did the last eval lose points?"""
+    results = rescore(load_last())
+    if not results:
+        sys.exit("আগে `eval` চালান।")
+    for r in results:
+        words = len(r["answer"].split())
+        print(f"- {r['task'][:55]}...\n    final={r['final']:.2f} reviewer={r['score']:.1f}/10 "
+              f"checks={r['check']:.0%} steps={len(r['plan'])} words={words} "
+              f"paragraphs={paragraph_count(r['answer'])}")
+        for f in r.get("check_failures", []):
+            print(f"      ✗ {f}")
+    n = len(results)
+    print(f"\nগড়: final={sum(r['final'] for r in results)/n:.3f} "
+          f"reviewer={sum(r['score'] for r in results)/n/10:.3f} "
+          f"checks={sum(r['check'] for r in results)/n:.3f}")
+
+
 def cmd_improve(_):
     if load_last() is None:
         print("আগে `eval` চালানো হচ্ছে...")
         cmd_eval(None)
-    results = load_last()
+    results = rescore(load_last())
     pid = propose(results, Context(provider=get_provider()))
     if pid is None:
         print("প্রস্তাব বাতিল (ভুল target বা অস্বাভাবিক দৈর্ঘ্য)। বিস্তারিত audit log-এ।")
@@ -129,7 +149,7 @@ def cmd_serve(args):
     serve(host, port)
 
 
-COMMANDS = {"serve": cmd_serve, "run": cmd_run, "eval": cmd_eval, "improve": cmd_improve, "proposals": cmd_proposals,
+COMMANDS = {"serve": cmd_serve, "run": cmd_run, "eval": cmd_eval, "report": cmd_report, "improve": cmd_improve, "proposals": cmd_proposals,
             "test": cmd_test, "approve": cmd_approve, "kill": cmd_kill, "resume": cmd_resume}
 
 

@@ -27,12 +27,12 @@ def _count_met(requirements, answer):
             met += 1
     return met
 
-def _paragraphs(answer):
+def paragraph_count(answer):
     return len([p for p in re.split(r"\n\s*\n", answer.strip()) if p.strip()])
 
 
-def check_answer(task, answer):
-    """Deterministic score 0-1 for one task. Each of these counts as one requirement:
+def check_report(task, answer):
+    """(score 0-1, list of failure strings) for one task. Each of these counts as one requirement:
     every "must_contain" entry, "max_words" (answer not longer than that) and "max_paragraphs"
     (answer not split into more blocks than that). The pipeline joins the output of every step with
     a blank line, so a simple question that gets chopped into several steps shows up as too many
@@ -42,17 +42,57 @@ def check_answer(task, answer):
     max_par = task.get("max_paragraphs")
     total = len(reqs) + (1 if max_words else 0) + (1 if max_par else 0)
     if total == 0:
-        return 1.0
-    met = _count_met(reqs, answer)
-    if max_words and len(answer.split()) <= max_words:
-        met += 1
-    if max_par and _paragraphs(answer) <= max_par:
-        met += 1
-    return met / total
+        return 1.0, []
+    low = answer.lower()
+    met, fails = 0, []
+    for req in reqs:
+        alts = [req] if isinstance(req, str) else list(req)
+        if any(a.lower() in low for a in alts):
+            met += 1
+        else:
+            fails.append("missing: " + " / ".join(alts))
+    if max_words:
+        n = len(answer.split())
+        if n <= max_words:
+            met += 1
+        else:
+            fails.append(f"too long: {n} words, limit {max_words}")
+    if max_par:
+        n = paragraph_count(answer)
+        if n <= max_par:
+            met += 1
+        else:
+            fails.append(f"too many paragraphs: {n}, limit {max_par}")
+    return met / total, fails
+
+
+def check_answer(task, answer):
+    return check_report(task, answer)[0]
+
+
+def load_tasks():
+    return json.loads((config.evals_dir() / "tasks.json").read_text(encoding="utf-8"))
+
+
+def _apply_checks(res, task):
+    res["check"], res["check_failures"] = check_report(task, res["answer"])
+    res["final"] = 0.5 * res["score"] / 10 + 0.5 * res["check"]
+
+
+def rescore(results):
+    """Recompute check, failures and final of saved results from the current tasks.json (matched by
+    task text). Works offline, so old saved evals gain failure details without any model call."""
+    by_text = {t["task"]: t for t in load_tasks()}
+    for r in results or []:
+        if r["task"] in by_text:
+            _apply_checks(r, by_text[r["task"]])
+        else:
+            r.setdefault("check_failures", [])
+    return results
 
 
 def run_eval(provider, overrides=None, on_result=None):
-    tasks = json.loads((config.evals_dir() / "tasks.json").read_text(encoding="utf-8"))
+    tasks = load_tasks()
     # One task makes at most 8 model calls (plan, 4 steps, review, revision, review). Unless the owner
     # set MAX_CALLS / MAX_SECONDS explicitly, size the budget to the task list so a longer eval is
     # not cut off. An explicit owner setting is always honoured.
@@ -63,8 +103,7 @@ def run_eval(provider, overrides=None, on_result=None):
     results = []
     for t in tasks:
         res = run_task(t["task"], ctx)
-        res["check"] = check_answer(t, res["answer"])
-        res["final"] = 0.5 * res["score"] / 10 + 0.5 * res["check"]
+        _apply_checks(res, t)
         results.append(res)
         if on_result:
             on_result(res)

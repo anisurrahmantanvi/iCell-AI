@@ -11,7 +11,8 @@ export PYTHONPATH=src
 python -m ecosystem eval                 # mock মডেল দিয়ে (ডিফল্ট)
 python -m ecosystem eval --runs 3        # ৩বার চালিয়ে গড় ও ওঠানামা (সর্বোচ্চ ৫)
 python -m ecosystem run "আপনার কাজ"
-python -m ecosystem improve              # প্রস্তাব তৈরি
+python -m ecosystem report               # শেষ eval-এ কোথায় নম্বর কাটা গেল (অফলাইন, কোনো API কল নেই)
+python -m ecosystem improve              # প্রস্তাব তৈরি (Improver ব্যর্থ চেকগুলো দেখে)
 python -m ecosystem proposals
 python -m ecosystem test 1 --runs 3      # আগে/পরে তুলনা, ওঠানামার সাথে মিলিয়ে
 python -m ecosystem approve 1            # y দিলে প্রয়োগ

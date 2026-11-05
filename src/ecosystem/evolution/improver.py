@@ -10,7 +10,8 @@ def propose(results, ctx):
     Invalid proposals (wrong target, bad length) are rejected automatically."""
     payload = {
         "current_prompts": {n: get_prompt(n) for n in config.EVOLVABLE},
-        "eval_feedback": [{"task": r["task"], "final": round(r["final"], 2), "feedback": r["feedback"]}
+        "eval_feedback": [{"task": r["task"], "final": round(r["final"], 2), "feedback": r["feedback"],
+                           "failed_checks": r.get("check_failures", []), "steps_used": len(r["plan"])}
                           for r in results],
         "allowed_targets": list(config.EVOLVABLE),
     }

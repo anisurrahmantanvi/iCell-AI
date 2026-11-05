@@ -23,7 +23,7 @@ from ..agents.base import Context
 from ..agents.orchestrator import run_task
 from ..core import audit, killswitch, proposals
 from ..core.killswitch import Stopped
-from ..evals.runner import load_last, run_eval, save_last
+from ..evals.runner import load_last, rescore, run_eval, save_last
 from ..evolution.improver import propose
 from ..llm import get_provider
 
@@ -112,7 +112,7 @@ def route(method, path, query, role, body):
             return {"average": avg, "results": results}
         return 200, _run_exclusive(job)
     if path == "/improve":
-        results = load_last()
+        results = rescore(load_last())
         if results is None:
             return 409, {"error": "আগে POST /eval চালান"}
         pid = _run_exclusive(lambda: propose(results, Context(provider=get_provider())))
