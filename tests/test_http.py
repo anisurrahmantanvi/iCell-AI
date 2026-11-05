@@ -62,6 +62,19 @@ class HttpHeaderTests(EcoTestCase):
         self.assertEqual(_Scripted.seen["Authorization"], "Bearer x")  # caller headers still pass through
 
 
+class HttpErrorMessageTests(unittest.TestCase):
+    def test_message_shows_the_apis_own_text_including_quota_details(self):
+        body = json.dumps({"error": {"code": 429, "message": "You exceeded your current quota. "
+                                     "* Quota exceeded for metric: free_tier_requests, limit: 20, model: m"}})
+        err = HttpError(429, body)
+        self.assertIn("limit: 20", str(err))
+        self.assertNotIn('{"error"', str(err))
+        self.assertEqual(err.body, body)  # the full body is still there for providers
+
+    def test_non_json_body_is_shown_as_is(self):
+        self.assertIn("plain text", str(HttpError(500, "plain text")))
+
+
 class HttpRetryTests(EcoTestCase):
     def test_retries_503_then_succeeds(self):
         sleeps = []

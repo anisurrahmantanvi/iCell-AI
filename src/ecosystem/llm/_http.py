@@ -10,12 +10,23 @@ from ..core import killswitch
 TRANSIENT = {429, 500, 502, 503, 504}
 
 
+def _readable(body):
+    """Prefer the API's own error message (it often names the quota that was exceeded) over raw JSON."""
+    try:
+        msg = json.loads(body)["error"]["message"]
+        if isinstance(msg, str) and msg.strip():
+            return msg.strip()
+    except (ValueError, KeyError, TypeError):
+        pass
+    return body
+
+
 class HttpError(RuntimeError):
-    """HTTP error answer. The message is short; the full body stays available for providers
-    that want to inspect it (see llm/groq.py)."""
+    """HTTP error answer. The message is readable and short; the full body stays available for
+    providers that want to inspect it (see llm/groq.py)."""
 
     def __init__(self, code, body):
-        super().__init__(f"HTTP {code}: {body[:300]!r}")
+        super().__init__(f"HTTP {code}: {_readable(body)[:700]}")
         self.code = code
         self.body = body
 
