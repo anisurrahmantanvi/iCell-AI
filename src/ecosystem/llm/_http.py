@@ -7,7 +7,9 @@ import urllib.request
 
 def post_json(url, body, headers=None, retries=2):
     data = json.dumps(body).encode()
-    h = {"Content-Type": "application/json", **(headers or {})}
+    # Some providers sit behind Cloudflare, which rejects Python's default "Python-urllib/x.y"
+    # User-Agent with HTTP 403 "error code: 1010". A plain client name avoids that.
+    h = {"Content-Type": "application/json", "User-Agent": "iCell-AI/0.1", **(headers or {})}
     for attempt in range(retries + 1):
         try:
             req = urllib.request.Request(url, data=data, headers=h)
