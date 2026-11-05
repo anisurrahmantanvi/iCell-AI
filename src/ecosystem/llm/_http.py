@@ -20,3 +20,5 @@ def post_json(url, body, headers=None, retries=2):
                 time.sleep(5 * (attempt + 1))
                 continue
             raise RuntimeError(f"HTTP {e.code}: {e.read()[:300]!r}")
+        except (urllib.error.URLError, TimeoutError, OSError) as e:  # no internet, DNS, proxy, timeout
+            raise RuntimeError(f"সংযোগ ব্যর্থ ({e.__class__.__name__}): {e}")

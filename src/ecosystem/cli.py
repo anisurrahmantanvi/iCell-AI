@@ -1,12 +1,11 @@
 """Command line interface (the human's control panel)."""
 import sys
 
-
 from .agents.base import Context
 from .agents.orchestrator import run_task
 from .core import audit, killswitch, proposals
 from .core.killswitch import Stopped
-from .evals.runner import load_last, run_eval, save_last
+from .evals.runner import load_last, run_eval_many, save_last, summarize
 from .evolution.improver import propose
 from .llm import get_provider
 
@@ -24,12 +23,33 @@ def _show(res):
     print(f"  - {res['task'][:55]}... reviewer={res['score']:.1f}/10 checks={res['check']:.0%}")
 
 
-def cmd_eval(_):
+def _parse_runs(args):
+    """--runs N (1-5, default 1)."""
+    if "--runs" not in args:
+        return 1
+    try:
+        n = int(args[args.index("--runs") + 1])
+    except (IndexError, ValueError):
+        sys.exit("ব্যবহার: --runs সংখ্যা  (যেমন --runs 3)")
+    return max(1, min(n, 5))
+
+
+def _fmt(avgs):
+    mean, lo, hi = summarize(avgs)
+    if len(avgs) == 1:
+        return f"{mean:.3f}"
+    return f"{mean:.3f} (সর্বনিম্ন {lo:.3f}, সর্বোচ্চ {hi:.3f}, {len(avgs)} রান)"
+
+
+def cmd_eval(args):
+    args = args or []
     provider = get_provider()
-    print(f"provider={provider.name}")
-    avg, results = run_eval(provider, on_result=_show)
+    runs = _parse_runs(args)
+    print(f"provider={provider.name} runs={runs}")
+    on_run = (lambda i, avg: print(f"  -> রান {i}: {avg:.3f}")) if runs > 1 else None
+    avgs, results = run_eval_many(provider, runs, on_result=_show, on_run=on_run)
     save_last(results)
-    print(f"গড় স্কোর: {avg:.3f}")
+    print(f"গড় স্কোর: {_fmt(avgs)}")
 
 
 def cmd_improve(_):
@@ -57,12 +77,20 @@ def cmd_test(args):
         sys.exit("প্রস্তাবের নম্বর দিন")
     p = proposals.get(args[0])
     provider = get_provider()
+    runs = _parse_runs(args)
     print("বর্তমান প্রম্পট দিয়ে:")
-    base, _r = run_eval(provider, on_result=_show)
+    base, _r = run_eval_many(provider, runs, on_result=_show)
     print("প্রস্তাবিত প্রম্পট দিয়ে:")
-    new, _r = run_eval(provider, overrides={p["target"]: p["new_prompt"]}, on_result=_show)
-    print(f"\nআগে: {base:.3f}  পরে: {new:.3f}")
-    print("সতর্কতা: LLM রিভিউয়ার গোলমেলে, ছোট পার্থক্য প্রমাণ নয়। কয়েকবার চালান।")
+    new, _r = run_eval_many(provider, runs, overrides={p["target"]: p["new_prompt"]}, on_result=_show)
+    b_mean, b_lo, b_hi = summarize(base)
+    n_mean, n_lo, n_hi = summarize(new)
+    print(f"\nআগে: {_fmt(base)}\nপরে: {_fmt(new)}")
+    if runs == 1:
+        print("সতর্কতা: ১টা রান, স্কোর নিজে নিজে কতটা ওঠানামা করে তা জানা নেই। --runs 3 দিয়ে চালান।")
+    elif abs(n_mean - b_mean) <= max(b_hi - b_lo, n_hi - n_lo):
+        print("ফল: পার্থক্য স্কোরের স্বাভাবিক ওঠানামার মধ্যে, উন্নতি প্রমাণিত নয়।")
+    else:
+        print("ফল: পার্থক্য ওঠানামার চেয়ে বড়। তবু কাজের সংখ্যা কম হলে নিশ্চিত নয়, আরও রান করে দেখুন।")
 
 
 def _ask_human(p):
@@ -118,5 +146,8 @@ def main(argv=None):
     except KeyboardInterrupt:
         audit.log("stopped", reason="Ctrl+C")
         print("\n⛔ Ctrl+C: বন্ধ করা হলো।")
+    except RuntimeError as e:  # model/network failure (e.g. HTTP 429 rate limit, bad model name)
+        audit.log("model_error", error=str(e)[:300])
+        sys.exit(f"\nমডেল/নেটওয়ার্ক ত্রুটি: {e}")
     except (KeyError, ValueError) as e:
         sys.exit(f"ত্রুটি: {e}")

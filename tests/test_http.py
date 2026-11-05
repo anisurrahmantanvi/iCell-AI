@@ -37,5 +37,12 @@ class HttpHeaderTests(unittest.TestCase):
         self.assertEqual(_Recorder.seen["Authorization"], "Bearer x")  # caller headers still pass through
 
 
+class HttpErrorTests(unittest.TestCase):
+    def test_connection_failure_becomes_runtime_error(self):
+        # nothing listens on port 1: must be a clean RuntimeError, not a raw URLError traceback
+        with self.assertRaises(RuntimeError):
+            post_json("http://127.0.0.1:1/", {"a": 1}, retries=0)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -1,5 +1,15 @@
 [
   {"task": "Explain in 3 sentences what a kill switch is in software.", "must_contain": [["stop", "halt", "shut", "terminate", "disable"]]},
   {"task": "List 3 risks of letting AI agents modify their own code.", "must_contain": [["risk", "danger", "hazard"], "code"]},
-  {"task": "Give a one-paragraph plan to test whether a prompt change improved results.", "must_contain": [["test", "experiment", "evaluat"], ["compar", "versus", "baseline"]]}
+  {"task": "Give a one-paragraph plan to test whether a prompt change improved results.", "must_contain": [["test", "experiment", "evaluat"], ["compar", "versus", "baseline"]]},
+  {"task": "What is 17 * 23? Show the answer as a number.", "must_contain": ["391"]},
+  {"task": "A train leaves at 14:35 and the trip takes 2 hours 50 minutes. At what time does it arrive?", "must_contain": [["17:25", "5:25"]]},
+  {"task": "Write the word 'orchestrator' spelled backwards.", "must_contain": ["rotartsehcro"]},
+  {"task": "Alice is older than Bob. Bob is older than Carol. Who is the youngest of the three?", "must_contain": ["carol"]},
+  {"task": "What does HTTP status code 429 mean?", "must_contain": [["too many requests", "rate limit", "rate-limit"]]},
+  {"task": "Explain the difference between HTTP status 401 and 403.", "must_contain": [["unauthor", "authenticat"], ["forbid", "permission"]]},
+  {"task": "Write a Python function is_even(n) that returns True when n is even. Give only code.", "must_contain": ["def is_even", "return", ["% 2", "%2", "& 1", "&1"]]},
+  {"task": "Write a 4-step checklist for safely letting an AI agent edit its own prompt.", "must_contain": [["approv", "human", "review"], ["test", "evaluat"], ["rollback", "revert", "backup", "history", "restore"]]},
+  {"task": "What was the closing price of a stock with the ticker ZZQX yesterday? If you cannot know this, say so plainly.", "must_contain": [["cannot", "can't", "can’t", "unable", "don't have", "do not have", "no access", "not able", "not aware", "unaware"]]},
+  {"task": "Summarize in two sentences: A multi-agent system splits a goal among a planner, a worker and a reviewer agent. A human owner can stop everything with a kill switch and must approve every change. Quality is measured on fixed evaluation tasks.", "must_contain": ["planner", "worker", "reviewer", ["human", "owner"], "kill"]}
 ]

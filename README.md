@@ -9,10 +9,11 @@ Multi-Agent AI Ecosystem।
 ```
 export PYTHONPATH=src
 python -m ecosystem eval                 # mock মডেল দিয়ে (ডিফল্ট)
+python -m ecosystem eval --runs 3        # ৩বার চালিয়ে গড় ও ওঠানামা (সর্বোচ্চ ৫)
 python -m ecosystem run "আপনার কাজ"
 python -m ecosystem improve              # প্রস্তাব তৈরি
 python -m ecosystem proposals
-python -m ecosystem test 1               # আগে/পরে তুলনা
+python -m ecosystem test 1 --runs 3      # আগে/পরে তুলনা, ওঠানামার সাথে মিলিয়ে
 python -m ecosystem approve 1            # y দিলে প্রয়োগ
 python -m ecosystem kill                 # Kill switch
 python -m ecosystem resume
@@ -29,7 +30,9 @@ python -m ecosystem resume
 | Gemini ফ্রি টিয়ার | `export PROVIDER=gemini GEMINI_API_KEY=...` |
 | Groq ফ্রি টিয়ার | `export PROVIDER=groq GROQ_API_KEY=...` |
 
-`MODEL=` দিয়ে মডেলের নাম বদলানো যায়। বাজেট: `MAX_CALLS` (৬০), `MAX_SECONDS` (৯০০)।
+`MODEL=` দিয়ে মডেলের নাম বদলানো যায় (Groq-এর ডিফল্ট `openai/gpt-oss-20b`)। বাজেট: `MAX_CALLS` (৬০), `MAX_SECONDS` (৯০০)। `eval`-এর বাজেট নিজে কাজের সংখ্যা অনুযায়ী বাড়ে, তবে আপনি `MAX_CALLS`/`MAX_SECONDS` সেট করলে সেটাই মানা হয়।
+
+`eval`-এ ১৩টা কাজ আছে (`evals/tasks.json`)। প্রতিটার কিওয়ার্ড চেক কোড দিয়ে হয়, শুধু শব্দ আছে কি না দেখে, উত্তরের অর্থ বোঝে না।
 
 ## HTTP API
 
@@ -68,5 +71,6 @@ PYTHONPATH=src python -m unittest discover -s tests
 ## অবস্থা
 
 - Mock মডেলে সব নিয়ন্ত্রণ-অংশ (kill switch, বাজেট, অনুমোদন) টেস্ট করা।
-- Ollama/Gemini/Groq কোড লেখা আছে, কিন্তু আসল সার্ভারে এখনো চালানো হয়নি।
+- Groq আসল API-তে চালানো হয়েছে (`openai/gpt-oss-20b`, ৩টা কাজের পুরনো eval)। Ollama ও Gemini এখনো আসল সার্ভারে চালানো হয়নি।
+- ১৩ কাজের নতুন eval আসল মডেলে এখনো চালানো হয়নি, তাই এর বেসলাইন স্কোর অজানা।
 - HTTP API mock মডেলে টেস্ট করা (টোকেন, অনুমতি, kill switch, approve)। আসল মডেল দিয়ে এখনো চালানো হয়নি, আর দীর্ঘ কাজে অনুরোধ সিঙ্ক্রোনাস, তাই সময়সীমা পেরোতে পারে (পরে job queue দরকার হতে পারে)।
