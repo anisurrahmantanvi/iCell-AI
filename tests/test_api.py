@@ -48,6 +48,17 @@ class ApiTests(EcoTestCase):
         self.assertEqual(self.call("GET", "/status", "wrong-token-wrong-token")[0], 401)
         self.assertEqual(self.call("GET", "/status", API)[0], 200)
 
+    def test_chat_page_is_served_without_token_and_holds_no_secret(self):
+        with urllib.request.urlopen(self.base + "/") as r:
+            html = r.read().decode()
+            self.assertEqual(r.status, 200)
+            self.assertIn("text/html", r.headers["Content-Type"])
+            self.assertIn("default-src 'none'", r.headers["Content-Security-Policy"])
+        self.assertIn("iCell-AI", html)
+        self.assertNotIn(API, html)
+        self.assertNotIn(OWNER, html)
+        self.assertNotIn("innerHTML", html)  # model output must only go in via textContent
+
     def test_weak_or_equal_tokens_refuse_to_start(self):
         import os
         os.environ["ECOSYSTEM_OWNER_TOKEN"] = API

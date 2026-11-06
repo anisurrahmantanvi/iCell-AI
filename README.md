@@ -45,6 +45,20 @@ Groq-এ প্রতিটা মডেলের দৈনিক সীমা �
 
 `eval`-এ ১৩টা কাজ আছে (`evals/tasks.json`)। চেকগুলো কোড দিয়ে হয়, উত্তরের অর্থ বোঝে না: দরকারি শব্দ আছে কি না (`must_contain`), শব্দসংখ্যার সীমা (`max_words`), আর কত টুকরোয় (ফাঁকা লাইন দিয়ে আলাদা অনুচ্ছেদ) ভাঙা (`max_paragraphs`)। শেষটা ধরে সহজ প্রশ্ন অকারণে কয়েক ধাপে ভেঙে টুকরো-টুকরো উত্তর দেওয়ার সমস্যা।
 
+## ব্রাউজার চ্যাট পেজ
+
+Termux-এ বাংলা ভাঙা দেখায়, তাই ফোনের Chrome-এ চ্যাট পেজ আছে (সার্ভার ফোনেই চলে, বাইরে কিছু যায় না):
+
+```
+export PYTHONPATH=src
+export ECOSYSTEM_API_TOKEN=$(python -c "import secrets;print(secrets.token_urlsafe(24))")
+export ECOSYSTEM_OWNER_TOKEN=$(python -c "import secrets;print(secrets.token_urlsafe(24))")
+# (এর আগে মডেলের PROVIDER ও key export করা থাকতে হবে)
+python -m ecosystem serve --port 8765
+```
+
+নতুন Termux সেশনে `echo $ECOSYSTEM_API_TOKEN` দিয়ে টোকেন দেখুন (আগের সেশনের টোকেন হারিয়ে যায়, নতুন বানাতে হয়)। Chrome-এ `http://127.0.0.1:8765` খুলে সেই টোকেন দিন। পেজে কথা বলা, প্রস্তাব দেখা, ⛔ Kill, আর Owner টোকেন দিয়ে অনুমোদন/Kill তোলা যায়। প্রতিটা বার্তা আলাদা কাজ, আগের কথা মনে রাখে না। পেজে provider-এর key দেওয়া যায় না, সেটা Termux-এ export করতে হয়।
+
 ## HTTP API
 
 দুটো আলাদা টোকেন লাগে (১৬+ অক্ষর), না থাকলে সার্ভার চালুই হয় না:

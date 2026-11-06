@@ -26,6 +26,7 @@ from ..core.killswitch import Stopped
 from ..evals.runner import load_last, rescore, run_eval, save_last
 from ..evolution.improver import propose
 from ..llm import get_provider
+from .page import PAGE
 
 MAX_BODY = 64 * 1024
 MAX_TASK_CHARS = 2000
@@ -155,6 +156,19 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
+    def _send_page(self):
+        data = PAGE.encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Content-Security-Policy",
+                         "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; "
+                         "connect-src 'self'; base-uri 'none'; form-action 'none'")
+        self.end_headers()
+        self.wfile.write(data)
+
     def _body(self):
         length = int(self.headers.get("Content-Length") or 0)
         if length > MAX_BODY:
@@ -170,6 +184,8 @@ class Handler(BaseHTTPRequestHandler):
         path = url.path.rstrip("/") or "/"
         if method == "GET" and path == "/health":
             return self._send(200, {"ok": True})
+        if method == "GET" and path in ("/", "/app"):  # the page itself holds no secrets
+            return self._send_page()
         role = _role_for(self.headers.get("Authorization", ""))
         if role is None:
             return self._send(401, {"error": "unauthorized"})
